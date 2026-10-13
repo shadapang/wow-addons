@@ -11,7 +11,14 @@ import sys
 from lupa import LuaRuntime
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-LUA_PATH = os.path.join(HERE, "..", "AutoMountLite", "AutoMountLite.lua")
+ADDONS_DIR = os.path.join(HERE, "..", "addons")
+LUA_PATH = os.path.join(ADDONS_DIR, "AutoMountLite", "AutoMountLite.lua")
+
+if not os.path.isfile(LUA_PATH):
+    raise SystemExit(
+        "[错误] 找不到插件源码：%s\n"
+        "       仓库已改为 addons/<插件名>/ 布局，确认插件目录还在。" % LUA_PATH
+    )
 
 LEGACY_CLICK = "CLICK AutoMountLiteToggleButton:LeftButton"
 
