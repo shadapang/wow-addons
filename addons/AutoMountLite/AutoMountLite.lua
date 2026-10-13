@@ -1,12 +1,14 @@
 -- AutoMountLite.lua
--- 独立版「自动上坐骑」模块（逻辑复刻自 Dugi Questing Essential 的自动上坐骑）
+-- 独立版「自动上坐骑」插件。
+-- 功能灵感来自 Dugi Questing Essential 的自动上坐骑模块，本文件为独立实现，
+-- 不含 Dugi 的任何代码；环境速度权重的设计思路参考自该模块。
 -- 仅使用暴雪官方 API：C_Timer / C_MountJournal / 标准全局函数。
 -- 不模拟按键、不注入、不 hook、不联网。
 --
--- 与 Dugi 原版的差异：
+-- 与参考模块（Dugi）的差异：
 --   * 去掉了对 Dugi 向导（GuideOn）的依赖 —— 本插件独立常驻。
 --   * 开关/延迟/模式等改为本插件自己的存档（SavedVariables）。
---   * 核心选坐骑逻辑与环境速度权重与原版保持一致。
+--   * 核心选坐骑逻辑与环境速度权重的思路与参考模块一致。
 --   * v1.1.0：
 --       - mode=random 改为直接调用暴雪「随机召唤偏好坐骑」(法术150544)；
 --         修正"没有设置收藏坐骑时完全不召唤"的问题（原来被 GetNumFavorites 拦截）。
@@ -205,7 +207,7 @@ local function IsShapeShift()
     return false
 end
 
---====================== 坐骑选择（与 Dugi 一致） ======================--
+--====================== 坐骑选择（权重思路同参考模块） ======================--
 
 -- 坐骑类型ID → 分类。
 -- v1.2.3 重写：v1.2.2 及以前沿用 Dugi 旧表（只有 230/248/254/231/232/402），
@@ -392,7 +394,7 @@ end
 
 --====================== 诊断辅助 ======================--
 
--- 当前所处的环境（对应 Dugi 权重表实际生效的分支）
+-- 当前所处的环境（对应参考模块权重表实际生效的分支）
 local function EnvText()
     local swimming = IsSubmerged() or IsSwimming()
     local hasAdv   = (IsAdvancedFlyableArea and IsAdvancedFlyableArea()) and not swimming

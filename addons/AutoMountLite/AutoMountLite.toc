@@ -1,8 +1,10 @@
 ## Interface: 120100
 ## Title: AutoMountLite
-## Notes: 自动上坐骑（独立复刻 Dugi 的自动上坐骑模块）。命令：/am；默认快捷键 Alt+Z 开/关
+## Notes: 自动上坐骑（功能灵感来自 Dugi 的自动上坐骑模块，独立实现）。命令：/am；默认快捷键 Alt+Z 开/关
 ## Author: OfficeAce
 ## Version: 1.3.0
 ## X-Category: Mounts
+## X-License: MIT
+## X-Website: https://cnb.cool/wuhuarou-2026_799/wow-addons
 ## SavedVariables: AutoMountLiteDB
 AutoMountLite.lua

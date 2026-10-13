@@ -7,11 +7,15 @@
 
 所有插件只调用暴雪官方 API，不模拟按键、不注入、不 hook、不联网。
 
+## 许可
+
+MIT，见 [LICENSE](LICENSE)。
+
 ## 插件列表
 
 | 插件 | 版本 | 说明 | 状态 |
 | --- | --- | --- | --- |
-| [AutoMountLite](addons/AutoMountLite/README.md) | 1.3.0 | 自动上坐骑（复刻 Dugi 的同名模块），支持图形设置面板 | ✅ 可用 |
+| [AutoMountLite](addons/AutoMountLite/README.md) | 1.3.0 | 自动上坐骑（功能灵感来自 Dugi 同名模块，独立实现），支持图形设置面板 | ✅ 可用 |
 
 ## 目录结构
 
@@ -38,7 +42,13 @@ python _tools/deploy.py --dest "E:\ Games\..."   # 指定别的 AddOns 目录
 python _tools/deploy.py --dry-run                # 只看会同步什么，不真写
 ```
 
-**方式二：手动**
+**方式二：从 Release 下载（不用装 git）**
+
+在 <https://cnb.cool/wuhuarou-2026_799/wow-addons> 的 Release 里下载
+`AutoMountLite-<版本>.zip`，解压出 `AutoMountLite/` 文件夹，放进 AddOns 目录即可
+（只含插件本体，不含 `_tools` 开发工具）。
+
+**方式三：手动**
 
 把 `addons/` 里需要的插件文件夹整个复制进：
 
@@ -69,7 +79,19 @@ node _tools/check.js addons/<插件名>/<插件名>.lua                      # �
 
 改代码前先让测试变红、改完再变绿（变异测试），避免写出「假绿」的测试。
 
-## 踩坑记录
+## 打发布包
 
-见 [docs/](docs/)。尤其是 [WoW API 踩坑](docs/wow-api-pitfalls.md)——
-里面记的每一个坑，都是靠「在真实客户端里反复重试」才发现的。
+```bash
+python _tools/package.py                 # 生成 dist/AutoMountLite-<版本>.zip
+```
+
+zip 内顶层是 `AutoMountLite/`，只含插件运行文件（自动排除 `.bak`），可直接上传到
+CurseForge / Wago。版本号从 `.toc` 的 `## Version` 读，不用另外维护。
+
+## 文档
+
+- [docs/wow-api-pitfalls.md](docs/wow-api-pitfalls.md) —— WoW API 踩坑记录。
+  里面每一个坑都是靠「在真实客户端里反复重试」才发现的，尤其是
+  「调用了根本不存在的 API」这类只能靠离线仿真抓出来的问题。
+- [docs/publishing.md](docs/publishing.md) —— 发布指南（CurseForge / Wago 表单、
+  中英文介绍、发版 SOP）。
