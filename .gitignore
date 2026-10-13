@@ -1,0 +1,17 @@
+# 备份文件
+*.bak
+*.orig
+
+# 构建/发布产物
+*.zip
+
+# 运行时产物（测试输出、监控日志、临时文件）
+_tools/*.txt
+_tools/*.csv
+_tools/*.log
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

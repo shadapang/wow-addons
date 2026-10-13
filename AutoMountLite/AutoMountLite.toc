@@ -1,0 +1,8 @@
+## Interface: 120100
+## Title: AutoMountLite
+## Notes: 自动上坐骑（独立复刻 Dugi 的自动上坐骑模块）。命令：/am；默认快捷键 Alt+Z 开/关
+## Author: OfficeAce
+## Version: 1.3.0
+## X-Category: Mounts
+## SavedVariables: AutoMountLiteDB
+AutoMountLite.lua

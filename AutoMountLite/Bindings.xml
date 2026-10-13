@@ -1,0 +1,5 @@
+<Bindings>
+	<Binding name="AUTOMOUNTLITE_TOGGLE" category="AutoMountLite">
+		AutoMountLite_Toggle()
+	</Binding>
+</Bindings>
