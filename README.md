@@ -1,5 +1,7 @@
 # wow-addons
 
+> 仓库地址：<https://cnb.cool/wuhuarou-2026_799/wow-addons>
+
 魔兽世界插件集合仓（正式服 / retail）。每个插件一个目录，放在 `addons/` 下，
 和游戏 `Interface/AddOns/` 的目录结构 1:1，可以直接复制或一键部署。
 
@@ -45,6 +47,12 @@ python _tools/deploy.py --dry-run                # 只看会同步什么，不�
 ```
 
 然后**完全退出并重启游戏**（新插件要重启客户端才会被扫描到，`/reload` 不够）。
+
+想跟着更新就克隆本仓库，之后重复上面两步即可：
+
+```bash
+git clone https://cnb.cool/wuhuarou-2026_799/wow-addons.git
+```
 
 ## 开发
 
