@@ -1,0 +1,14 @@
+# wow-addons: CNB → GitHub 自动同步（主方向）
+main:
+  push:
+    - stages:
+        - name: sync-to-github
+          image: tencentcom/git-sync
+          settings:
+            target_url: https://github.com/shadapang/wow-addons.git
+            auth_type: https
+            username: shadapang
+            password: ${GITHUB_TOKEN}
+            branch: main        # 只同步 main
+            force: false        # 非快进即失败，GitHub 侧分叉时流水线报红=告警
+            push_tags: false    # 标签暂不同步
