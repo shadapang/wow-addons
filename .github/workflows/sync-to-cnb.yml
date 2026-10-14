@@ -1,4 +1,4 @@
-name: sync-to-cnb（兜底方向·定时巡检）
+name: sync-to-cnb
 on:
   schedule:
     - cron: '17 */6 * * *'
