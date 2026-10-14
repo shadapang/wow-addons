@@ -15,13 +15,13 @@ jobs:
           fetch-depth: 0
       - name: 拉取 CNB 侧 main（只读）
         env:
-          CNB_TOKEN: *** secrets.CNB_TOKEN }}
+          CNB_TOKEN: ${{ secrets.CNB_TOKEN }}
         run: |
           git remote add cnb "https://cnb:${CNB_TOKEN}@cnb.cool/wuhuarou-2026_799/wow-addons.git"
           git fetch cnb main
       - name: 三态判定
         env:
-          CNB_TOKEN: *** secrets.CNB_TOKEN }}
+          CNB_TOKEN: ${{ secrets.CNB_TOKEN }}
           GH_TOKEN: ${{ github.token }}
         run: |
           set -e
