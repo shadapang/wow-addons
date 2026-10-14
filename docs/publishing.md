@@ -1,6 +1,22 @@
 # 发布指南（CurseForge / Wago）
 
 > 状态：2026-10-14 查证。渠道选择结论：**CurseForge 为主，Wago 顺手加**。
+
+## 进度看板（2026-10-15 更新）
+
+| 渠道 / 事项 | 状态 | 阻塞原因 | 下一步 |
+| --- | --- | --- | --- |
+| CNB Release v1.3.0 | ✅ 已发布 | — | ⚠️ 附件是**旧包**（3 文件、无 LICENSE、toc 含旧措辞），需在 Release 页重新上传 `dist/AutoMountLite-1.3.0.zip` |
+| CNB → GitHub 镜像 | ✅ 已配（`.cnb.yml` → `github.com/shadapang/wow-addons`） | — | 自动发布（方案 A）的前置已就绪 |
+| CurseForge | ❌ 未开始 | 需注册作者账号（我无法代办） | 用下方表单 + `dist/AutoMountLite-1.3.0.zip` 上传 |
+| Wago.io | ❌ 未开始 | 需账号 | 同一份 zip，描述复用英文版 |
+| NGA 发帖 | 📝 文案已写好 | 需账号发帖 | 见 [nga-post.md](nga-post.md)，可直接粘贴 |
+| `.toc` 的 Project ID | ❌ 待回填 | 需先有 CF/Wago 项目 | 拿到 ID 后填 `X-Curse-Project-ID` / `X-Wago-ID` |
+
+> ⚠️ **已知限制（实测）**：`cnb` CLI 有 `releases`（13 tools）和 `assets`（4 tools）模块，
+> 但**都不能上传 Release 附件**——`post-release` 无文件参数，`assets` 只有 delete/list。
+> 直接调 API（`/v1/repos/.../releases/{id}/assets` 等多种路径）均返回 404。
+> **结论：Release 附件只能在网页上传。**
 > 国服不用单独找平台——黑盒工坊、网易有爱等国服插件客户端的内容都从 CurseForge 同步，
 > 发一处即覆盖全球 + 国服。NGA 属于「发帖引流」不是托管渠道，发布后去发个介绍贴带链接即可。
 > WoWInterface 老牌但流量小，可略。
