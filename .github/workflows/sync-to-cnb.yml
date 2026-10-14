@@ -1,0 +1,45 @@
+name: sync-to-cnb（兜底方向·定时巡检）
+on:
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+  issues: write
+jobs:
+  guard-and-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: 拉取 CNB 侧 main（只读）
+        env:
+          CNB_TOKEN: *** secrets.CNB_TOKEN }}
+        run: |
+          git remote add cnb "https://cnb:${CNB_TOKEN}@cnb.cool/wuhuarou-2026_799/wow-addons.git"
+          git fetch cnb main
+      - name: 三态判定
+        env:
+          CNB_TOKEN: *** secrets.CNB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          GH_MAIN=$(git rev-parse HEAD)
+          CNB_MAIN=$(git rev-parse cnb/main)
+          echo "GitHub main=$GH_MAIN | CNB main=$CNB_MAIN"
+          if [ "$GH_MAIN" = "$CNB_MAIN" ]; then
+            echo "一致，无需动作"; exit 0
+          fi
+          if git merge-base --is-ancestor HEAD cnb/main; then
+            echo "GitHub 落后于 CNB（镜像滞后），等主方向，不反推"; exit 0
+          fi
+          if git merge-base --is-ancestor cnb/main HEAD; then
+            echo "GitHub 领先且可快进：ff-only 推送 CNB"
+            git push "https://cnb:${CNB_TOKEN}@cnb.cool/wuhuarou-2026_799/wow-addons.git" HEAD:refs/heads/main
+            exit 0
+          fi
+          echo "真分叉：只告警不强推"
+          gh issue create --repo shadapang/wow-addons \
+            --title "[sync-alert] GitHub↔CNB 分叉 $(date -u +%Y-%m-%d)" \
+            --body "GitHub main=${GH_MAIN:0:9}，CNB main=${CNB_MAIN:0:9}。ff-only 策略已停止自动同步，请人工裁决。"
