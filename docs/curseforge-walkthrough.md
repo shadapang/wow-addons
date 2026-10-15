@@ -34,7 +34,7 @@
 | **Additional categories** | `Miscellaneous`（可选 0–4） | 别为了曝光乱加无关分类，会被退回重填 |
 | **Allow Comments** | 勾上 | 早期反馈就靠这个 |
 | **Unlisted project** | **不勾** | 勾了只在直连链接可见、搜不到 |
-| **Social Links** | `https://cnb.cool/wuhuarou-2026_799/wow-addons` | 源码仓，增加可信度 |
+| **Social Links** | `https://github.com/shadapang/wow-addons` | **写 GitHub 不写 CNB**：CF 受众是国际玩家，GitHub 才被认可为「源码仓」，且带 issue 追踪；CNB 仓是自有主仓（`cnb.cool/wuhuarou-2026_799/wow-addons`），作为 backup 路不对 CF 用户展示 |
 
 **Summary（已备好，直接粘）：**
 ```
