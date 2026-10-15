@@ -7,8 +7,9 @@
 | 渠道 / 事项 | 状态 | 阻塞原因 | 下一步 |
 | --- | --- | --- | --- |
 | CNB Release v1.3.0 | ✅ 已发布 | — | ⚠️ 附件是**旧包**（3 文件、无 LICENSE、toc 含旧措辞），需在 Release 页重新上传 `dist/AutoMountLite-1.3.0.zip` |
+| **v1.4.0（双语界面）** | ✅ 代码完成、已部署、已打包 | — | 待 tag `v1.4.0` + 推两路；CNB Release 由网页/NPC 建（附件用 `dist/AutoMountLite-1.4.0.zip`） |
 | CNB → GitHub 镜像 | ✅ 已配（`.cnb.yml` → `github.com/shadapang/wow-addons`） | — | 自动发布（方案 A）的前置已就绪 |
-| CurseForge | ❌ 未开始 | 需注册作者账号（我无法代办） | 用下方表单 + `dist/AutoMountLite-1.3.0.zip` 上传 |
+| CurseForge | ❌ 未开始 | 需注册作者账号（我无法代办） | 用下方表单 + `dist/AutoMountLite-1.4.0.zip` 上传 |
 | Wago.io | ❌ 未开始 | 需账号 | 同一份 zip，描述复用英文版 |
 | NGA 发帖 | 📝 文案已写好 | 需账号发帖 | 见 [nga-post.md](nga-post.md)，可直接粘贴 |
 | `.toc` 的 Project ID | ❌ 待回填 | 需先有 CF/Wago 项目 | 拿到 ID 后填 `X-Curse-Project-ID` / `X-Wago-ID` |
@@ -46,7 +47,7 @@ AutoMountLite
 
 ### Summary（一句话，会显示在列表页）
 ```
-Automatically summons your mount when you start moving — lightweight, zero dependencies, with a built-in options panel.
+Automatically summons your mount when you start moving — lightweight, zero dependencies, bilingual (English / 简体中文), with a built-in options panel.
 ```
 
 ### Description（英文正文，CurseForge 主站用）
@@ -72,6 +73,9 @@ start moving and you're not doing anything else. Configuration lives in
 - **Per-environment mount preference.** Force a specific mount (or "none") for
   ground, flying and underwater separately.
 - **Configurable delay** after spellcasting (0–10s, default 1.0s).
+- **Bilingual interface.** Simplified Chinese and English — follows your client
+  locale by default, or force either language in the options panel (`/am lang`).
+  Chat output, panel labels, dropdowns and key-binding descriptions are all localized.
 - **Built-in options panel** (Blizzard `Settings` API) and diagnostic commands.
 - **ALT+Z** toggles the addon (rebindable in Key Bindings → AddOns).
 
@@ -85,6 +89,7 @@ start moving and you're not doing anything else. Configuration lives in
 | `/am diag` | Diagnostics: zone availability, summon-API self-check, top-weight pool |
 | `/am mode random\|fastest` | Switch summon mode |
 | `/am delay <0-10>` | Delay after spellcasting |
+| `/am lang auto\|zhCN\|enUS` | Interface language: follow client / Chinese / English |
 | `/am pref <ground\|flying\|aquatic> auto\|none\|<mountID>` | Per-environment preference |
 | `/am reset` | Restore defaults |
 
@@ -117,6 +122,8 @@ MIT licensed. Source: https://cnb.cool/wuhuarou-2026_799/wow-addons
 **功能**
 - 0.5 秒心跳 + 一票否决守卫：战斗中 / 施法中 / 已骑乘 / 室内 / 死亡 / 载具 /
   坠落 / 拾取窗 / 刚下坐骑 等任一命中就不召唤。
+- **中英双语界面**：默认跟随客户端语言，也可在「选项 → 插件 → AutoMountLite → 界面语言」
+  里手动切换（或 `/am lang zhCN|enUS`）。聊天输出、面板文字、下拉选项、键位描述全部本地化。
 - 两种模式：
   - *随机偏好*（默认）：调用 `C_MountJournal.SummonByID(0)`，和你在坐骑图鉴里
     点「随机召唤偏好坐骑」是同一个调用，**只会召唤你标了星星的坐骑**。

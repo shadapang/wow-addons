@@ -15,7 +15,7 @@ MIT，见 [LICENSE](LICENSE)。
 
 | 插件 | 版本 | 说明 | 状态 |
 | --- | --- | --- | --- |
-| [AutoMountLite](addons/AutoMountLite/README.md) | 1.3.0 | 自动上坐骑（功能灵感来自 Dugi 同名模块，独立实现），支持图形设置面板 | ✅ 可用 |
+| [AutoMountLite](addons/AutoMountLite/README.md) | 1.4.0 | 自动上坐骑（功能灵感来自 Dugi 同名模块，独立实现），中英双语界面 + 图形设置面板 | ✅ 可用 |
 
 ## 目录结构
 

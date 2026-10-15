@@ -336,6 +336,7 @@ class World(object):
     def __init__(self):
         self.clock = 1000.0
         self.prints = []
+        self.locale = "zhCN"        # 客户端语言码（v1.4.0 界面语言）
         self.area = {"adv": True, "fly": True, "swim": False}
         self.mounts = [dict(m) for m in DEFAULT_MOUNTS]
         self.summoned = []           # SummonByID 的实参记录（0 = 随机收藏）
@@ -440,8 +441,9 @@ class World(object):
 
 
 def make_world(area=None, mounts=None, key_actions=None, bindings=None,
-               omit_byid=False, byid0_errors=False, no_settings=False):
+               omit_byid=False, byid0_errors=False, no_settings=False, locale="zhCN"):
     w = World()
+    w.locale = locale
     if area:
         w.area.update(area)
     if mounts is not None:
@@ -465,6 +467,7 @@ def make_world(area=None, mounts=None, key_actions=None, bindings=None,
         "print": w.print,
         "GetTime": w.GetTime,
         "time": lambda: int(w.clock),   # WoW 提供的全局 time()，lupa 没有
+        "GetLocale": lambda: w.locale,  # v1.4.0 界面语言：客户端语言码
         "CreateFrame": w.CreateFrame,
         "UIParent": UIParent(),
         "C_Timer": Timer(w),
@@ -516,6 +519,10 @@ def make_world(area=None, mounts=None, key_actions=None, bindings=None,
     for k, v in mocks.items():
         setattr(g, k, v)
 
+    # v1.4.0：Locale 文件先加载（.toc 顺序），主文件里的 T() 才能取到文案
+    locale_path = os.path.join(ADDONS_DIR, "AutoMountLite", "AutoMountLite_Locale.lua")
+    with open(locale_path, encoding="utf-8") as f:
+        lua.execute(f.read())
     with open(LUA_PATH, encoding="utf-8") as f:
         lua.execute(f.read())
     return w, lua
@@ -815,7 +822,7 @@ def t_help_and_misc():
     slash(w, lua, "delay 2")
     check("cmd.delay设置", "施法后延迟 = 2.0s" in w.out())
     slash(w, lua, "pref ground 42")
-    check("cmd.pref指定ID", "ground = ID:42" in w.out())
+    check("cmd.pref指定ID", "地面 = ID:42" in w.out())
     slash(w, lua, "status")
     check("cmd.status显示指定ID", "地面=ID:42" in w.out())
     slash(w, lua, "delay 99")
@@ -1017,7 +1024,7 @@ def t_settings_panel():
     login(w)
     s = w.settings
     check("设置.注册了AutoMountLite分类",
-          any(c.name == "AutoMountLite" for c in s.categories),
+          any(c.name == "自动上坐骑" for c in s.categories),
           str([c.name for c in s.categories]))
     check("设置.已登记为AddOn分类", len(s.addon_categories) == 1)
 
@@ -1030,7 +1037,7 @@ def t_settings_panel():
 
     check("设置.复选框1个", len(s.checkboxes) == 1)
     check("设置.滑块1个", len(s.sliders) == 1)
-    check("设置.下拉框4个(模式+3偏好)", len(s.dropdowns) == 4, str(len(s.dropdowns)))
+    check("设置.下拉框5个(语言+模式+3偏好)", len(s.dropdowns) == 5, str(len(s.dropdowns)))
     check("设置.分节标题3个", len(s.headers) == 3, str(s.headers))
     check("设置.按钮3个", len(w.settings_buttons) == 3,
           str([b["name"] for b in w.settings_buttons]))
@@ -1123,6 +1130,146 @@ def t_settings_absent_ok():
     check("设置.无SettingsAPI时reset仍可用", "已恢复默认" in w.out())
 
 
+#====================== v1.4.0 界面双语 ======================--
+# 覆盖：两张表 key 一致、默认跟随客户端、/am lang 切换、面板语言下拉、漏翻译自检。
+# 这一组是整个 i18n 的安全网——加文案时只改一张表，这里立刻红。
+
+def t_locale_tables_consistent():
+    """两张语言表的 key 必须完全一致（漏翻 = 显示英文，属于静默降级，必须测出来）"""
+    w, lua = make_world()
+    loc = lua.globals().AutoMountLiteLocale
+    zh = set(loc.zhCN.keys())
+    en = set(loc.enUS.keys())
+    check("i18n.两张表key一致", zh == en,
+          "仅中文有:%s 仅英文有:%s" % (sorted(zh - en), sorted(en - zh)))
+    check("i18n.文案条数>100", len(zh) > 100, str(len(zh)))
+
+
+def t_locale_every_key_has_text():
+    """每个 key 在两张表里都必须有非空文案（防空串）"""
+    w, lua = make_world()
+    loc = lua.globals().AutoMountLiteLocale
+    for lang in ("zhCN", "enUS"):
+        table_ = getattr(loc, lang)
+        empty = [k for k in table_.keys() if not (table_[k] and str(table_[k]).strip())]
+        check("i18n.%s无空文案" % lang, not empty, str(empty))
+
+
+def t_locale_default_follows_client():
+    """不设 lang 时跟随客户端语言：zhCN 客户端→中文，enUS 客户端→英文"""
+    w, lua = make_world(locale="zhCN")
+    login(w)
+    check("i18n.默认中文(zhCN客户端)", "已加载" in w.out() and "开关=" in w.out(), w.out())
+
+    w, lua = make_world(locale="enUS")
+    login(w)
+    out = w.out()
+    check("i18n.默认英文(enUS客户端)", "Loaded - Enabled=" in out, out)
+
+
+def t_locale_alias_zhTW():
+    """繁体客户端复用简体文案表（不是回退英文）"""
+    w, lua = make_world(locale="zhTW")
+    login(w)
+    loc = lua.globals().AutoMountLiteLocale
+    check("i18n.zhTW映射zhCN", loc.GetLang() == "zhCN", str(loc.GetLang()))
+
+
+def t_locale_lang_switch():
+    """/am lang 切换语言：聊天输出、status、help 全部跟着变"""
+    w, lua = make_world()
+    login(w)
+    slash(w, lua, "lang enUS")
+    out = w.out()
+    check("i18n.切英文有提示", "Language set to" in out, out)
+
+    w.prints = []
+    slash(w, lua, "status")
+    check("i18n.status英文", "Enabled=" in w.out() and "开关=" not in w.out(), w.out())
+
+    w.prints = []
+    slash(w, lua, "favs")
+    check("i18n.favs英文", "favorite mounts" in w.out(), w.out()[-400:])
+
+    w.prints = []
+    slash(w, lua, "help")
+    check("i18n.help英文", "Commands:" in w.out() and "命令：" not in w.out(), w.out()[-400:])
+
+    slash(w, lua, "lang zhCN")
+    w.prints = []
+    slash(w, lua, "status")
+    check("i18n.切回中文", "开关=" in w.out(), w.out())
+
+
+def t_locale_lang_invalid():
+    """非法语言码给用法提示，不改动当前语言"""
+    w, lua = make_world()
+    login(w)
+    slash(w, lua, "lang xx")
+    check("i18n.非法语言提示用法", "用法: /am lang" in w.out(), w.out())
+    slash(w, lua, "status")
+    check("i18n.非法语言不改动", "开关=" in w.out(), w.out())
+
+
+def t_locale_saved_and_reset():
+    """lang 写进存档；reset 恢复 auto"""
+    w, lua = make_world()
+    login(w)
+    slash(w, lua, "lang enUS")
+    check("i18n.lang写入存档", lua.globals().AutoMountLiteDB.lang == "enUS",
+          str(lua.globals().AutoMountLiteDB.lang))
+    slash(w, lua, "reset")
+    check("i18n.reset恢复auto", lua.globals().AutoMountLiteDB.lang == "auto",
+          str(lua.globals().AutoMountLiteDB.lang))
+
+
+def t_locale_panel_lang_dropdown():
+    """面板里有语言下拉，选项为 auto/zhCN/enUS"""
+    w, lua = make_world()
+    login(w)
+    s = w.settings
+    keys = [x.key for x in s.settings]
+    check("i18n.面板含lang项", "AutoMountLite_lang" in keys, str(keys))
+    opts = None
+    for d in s.dropdowns:
+        if d[0].key == "AutoMountLite_lang":
+            d[1]()   # 调用 getOptions：mock 会把选项记到 w.settings_options
+            opts = [o[0] for o in w.settings_options]
+    check("i18n.语言下拉3个选项", opts == ["auto", "zhCN", "enUS"], str(opts))
+    check("i18n.分节标题4个(语言不算)", len(s.headers) == 3, str(s.headers))
+
+
+def t_locale_binding_name_localized():
+    """按键设置里的描述跟随客户端语言（BINDING_NAME 全局变量）"""
+    w, lua = make_world(locale="enUS")
+    login(w)
+    check("i18n.英文客户端键位描述",
+          lua.globals().BINDING_NAME_AUTOMOUNTLITE_TOGGLE == "Toggle Auto Mount",
+          str(lua.globals().BINDING_NAME_AUTOMOUNTLITE_TOGGLE))
+    w, lua = make_world(locale="zhCN")
+    login(w)
+    check("i18n.中文客户端键位描述",
+          lua.globals().BINDING_NAME_AUTOMOUNTLITE_TOGGLE == "开/关 自动上坐骑",
+          str(lua.globals().BINDING_NAME_AUTOMOUNTLITE_TOGGLE))
+
+
+def t_locale_no_hardcoded_zh_in_runtime():
+    """主文件运行时不得再有硬编码中文（源码级扫描，防回归）"""
+    import io
+    src = io.open(LUA_PATH, encoding="utf-8").read()
+    zh_ranges = ("\u4e00", "\u9fff")
+    bad = []
+    for i, line in enumerate(src.split("\n"), 1):
+        stripped = line.lstrip()
+        if stripped.startswith("--"):
+            continue
+        # 去掉行内注释后再找中文（注释允许中文）
+        code = line.split("--")[0] if "--" in line else line
+        if any(zh_ranges[0] <= ch <= zh_ranges[1] for ch in code):
+            bad.append((i, line.strip()[:60]))
+    check("i18n.运行时无硬编码中文", not bad, str(bad[:5]))
+
+
 def main():
     # 清空上一轮日志
     open(os.path.join(HERE, "rt_out.txt"), "w", encoding="utf-8").close()
@@ -1139,6 +1286,11 @@ def main():
         t_binding_fresh_default, t_favs_empty, t_help_and_misc, t_guards_combat,
         t_fastest_424_advflying,
         t_settings_panel, t_settings_pref_proxy, t_settings_absent_ok,
+        t_locale_tables_consistent, t_locale_every_key_has_text,
+        t_locale_default_follows_client, t_locale_alias_zhTW,
+        t_locale_lang_switch, t_locale_lang_invalid,
+        t_locale_saved_and_reset, t_locale_panel_lang_dropdown,
+        t_locale_binding_name_localized, t_locale_no_hardcoded_zh_in_runtime,
     ]
     for t in tests:
         try:

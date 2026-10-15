@@ -72,9 +72,36 @@
 --         老客户端没有 Settings API 时自动跳过，斜杠命令依旧可用。
 --       - /am reset 改为【原地重置】存档表（不再替换表引用），
 --         否则设置面板绑定的是旧表、重置后会写不进去。
+--   * v1.4.0：
+--       - 【界面双语】新增 AutoMountLite_Locale.lua（简体中文 / English 两张文案表），
+--         所有面向用户的文字（聊天输出、设置面板、按键绑定描述）改走 T() 取文案。
+--         语言三档：跟随客户端 / 简体中文 / English，可用 /am lang 或面板下拉切换。
+--         未翻译的 key 自动回退英文（并在离线测试里强制校验两张表 key 一致）。
 
 local ADDON  = "AutoMountLite"
 local PREFIX = "|cff33ff99AutoMountLite|r: "
+
+--====================== 界面语言 ======================--
+-- 文案表在 AutoMountLite_Locale.lua（.toc 里先于本文件加载）。
+-- AutoMountLiteLocale 在客户端语言下已初始化（auto=跟随 GetLocale）；
+-- db 加载完成后按用户设置再同步一次（ApplyLang）。
+local function T(key, ...)
+    return AutoMountLiteLocale.T(key, ...)
+end
+
+local db                     -- 指向 AutoMountLiteDB
+-- ⚠️ db 必须先于下面三个函数声明：Lua 的 upvalue 在【函数定义处】捕获，
+--    若 ApplyLang 定义时 db 还没声明为 local，函数体内的 db 会解析成全局(nil)，
+--    ApplyLang 将永远传入 "auto"（表现为 /am lang 切换不生效）。
+
+local function ApplyLang()
+    return AutoMountLiteLocale.SetLang(db and db.lang or "auto")
+end
+
+local function LangName(code)
+    code = code or "auto"
+    return T("lang_name_" .. code)
+end
 
 --====================== 默认配置 ======================--
 
@@ -82,12 +109,12 @@ local DEFAULTS = {
     enabled         = true,        -- 默认开启
     delayAfterSpell = 1.0,         -- 施法后延迟（秒），对应 Dugi 的 "Delay After Spell"
     mode            = "random",    -- 默认；"random"=从收藏坐骑里随机召唤(150544)，"fastest"=挑环境内最快坐骑
+    lang            = "auto",      -- 界面语言：auto=跟随客户端，zhCN=简体中文，enUS=English
     preferred       = {            -- 指定优先坐骑；nil=自动， "none"=该环境不骑， 数字=坐骑ID
         -- ground / flying / aquatic
     },
 }
 
-local db                     -- 指向 AutoMountLiteDB
 local autoMountTicker = nil  -- 0.5s 心跳
 
 --====================== 运行态时间戳 ======================--
@@ -389,7 +416,7 @@ end
 local function ToggleEnabled()
     db.enabled = not db.enabled
     UpdateEnabled()
-    Print(db.enabled and "已开启（自动上坐骑）" or "已关闭")
+    Print(db.enabled and T("msg_enabled_toggle") or T("msg_disabled"))
 end
 
 --====================== 诊断辅助 ======================--
@@ -399,21 +426,20 @@ local function EnvText()
     local swimming = IsSubmerged() or IsSwimming()
     local hasAdv   = (IsAdvancedFlyableArea and IsAdvancedFlyableArea()) and not swimming
     local hasFly   = IsFlyableArea() and not swimming
-    if swimming then return "水下" end
-    if hasAdv then return "史诗飞行区(御空坐骑权重最高)" end
-    if hasFly then return "可飞区(普通飞行)" end
-    return "不可飞区(地面)"
+    if swimming then return T("env_water") end
+    if hasAdv then return T("env_adv") end
+    if hasFly then return T("env_fly") end
+    return T("env_ground")
 end
 
 -- 按类型分组列出【收藏】坐骑：诊断 random 模式"总召某类坐骑"用
 local function ListFavorites()
     if not (C_MountJournal and C_MountJournal.GetMountIDs) then
-        Print("坐骑图鉴 API 不可用")
+        Print(T("api_unavailable"))
         return
     end
     local order   = {"advflying", "flying", "ground", "aquatic", "other"}
-    local label   = {advflying = "御空", flying = "飞行", ground = "地面",
-                     aquatic = "水下", other = "其它"}
+    local function label(key) return T("type_" .. key) end
     local groups, typeCount, totalFav, totalAll = {}, {}, 0, 0
     local unknownFavTypes = {}   -- 收藏中未识别类型ID -> 数量（自诊断用）
 
@@ -428,7 +454,7 @@ local function ListFavorites()
             if isFavorite then
                 groups[named] = groups[named] or {}
                 groups[named][#groups[named] + 1] =
-                    string.format("%s(ID:%d)", name or "?", mountId)
+                    string.format("%s(ID:%d)", name or T("mount_fallback", mountId), mountId)
                 totalFav = totalFav + 1
                 if named == "other" then
                     unknownFavTypes[mountTypeId] = (unknownFavTypes[mountTypeId] or 0) + 1
@@ -437,42 +463,38 @@ local function ListFavorites()
         end
     end
 
-    Print(string.format("收藏坐骑 %d 只（random 模式只在这些里面随机）：", totalFav))
+    Print(T("favs_header", totalFav))
     for _, key in ipairs(order) do
         local list = groups[key]
         if list and #list > 0 then
             local shown = {}
             for i = 1, math.min(#list, 20) do shown[i] = list[i] end
-            local tail = (#list > 20) and string.format(" …等 %d 只", #list) or ""
-            Print(string.format("  [%s] %d 只: %s%s",
-                label[key], #list, table.concat(shown, ", "), tail))
+            local tail = (#list > 20) and T("favs_more", #list) or ""
+            Print(T("favs_group", label(key), #list, table.concat(shown, ", "), tail))
         else
-            Print(string.format("  [%s] 0 只", label[key]))
+            Print(T("favs_empty", label(key)))
         end
     end
 
     if next(unknownFavTypes) then
         local parts = {}
         for tid, n in pairs(unknownFavTypes) do
-            parts[#parts + 1] = string.format("类型%d×%d", tid, n)
+            parts[#parts + 1] = T("favs_unknown_each", tid, n)
         end
         table.sort(parts)
-        Print("收藏中有未识别类型: " .. table.concat(parts, ", ")
-            .. "（请联系插件作者补充映射）")
+        Print(T("favs_unknown", table.concat(parts, ", ")))
     end
 
     local cnt = {}
     for _, key in ipairs(order) do
-        cnt[#cnt + 1] = string.format("%s=%d", label[key], typeCount[key] or 0)
+        cnt[#cnt + 1] = string.format("%s=%d", label(key), typeCount[key] or 0)
     end
-    Print(string.format("已收集坐骑共 %d 只（%s）", totalAll, table.concat(cnt, " ")))
+    Print(T("favs_collected", totalAll, table.concat(cnt, " ")))
 
     if totalFav == 0 then
-        Print("你还没有收藏任何坐骑。random 模式调用暴雪「随机召唤偏好坐骑」，"
-            .. "没有收藏时的行为由客户端决定。")
+        Print(T("favs_none"))
     end
-    Print("提示：/am pref 偏好设置只在 fastest 模式生效；random 模式改收藏构成"
-        .. "（坐骑图鉴点星星）才能改变随机池。")
+    Print(T("favs_hint"))
 end
 
 -- 诊断：列出星标收藏在当前区域的「可用性」。
@@ -480,7 +502,7 @@ end
 -- 所以只要看清哪些收藏 isUsable=false，就能解释「为什么 random 总召那几只」。
 local function DiagFavorites()
     if not (C_MountJournal and C_MountJournal.GetMountIDs) then
-        Print("坐骑图鉴 API 不可用")
+        Print(T("api_unavailable"))
         return
     end
 
@@ -491,8 +513,8 @@ local function DiagFavorites()
         if isCollected and isFavorite then
             local _, _, _, _, mountTypeId = C_MountJournal.GetMountInfoExtraByID(mountId)
             local named  = GetNamedMountType(mountTypeId)
-            local line   = string.format("%s(ID:%d,类型%s/%d)",
-                name or "?", mountId, named, mountTypeId or -1)
+            local line   = T("diag_line",
+                name or T("mount_fallback", mountId), mountId, named, mountTypeId or -1)
             if isUsable then
                 usable[#usable + 1] = line
             else
@@ -502,28 +524,27 @@ local function DiagFavorites()
     end
 
     local total = #usable + #blocked
-    Print(string.format("诊断 · 星标收藏 %d 只 | 当前区域【可用】%d 只 | 【不可用】%d 只",
-        total, #usable, #blocked))
-    Print(string.format("环境：可飞=%s 御空=%s 水下=%s  —— random 只从「可用」里随机",
-        tostring(IsFlyableArea()) and "是" or "否",
-        (IsAdvancedFlyableArea and IsAdvancedFlyableArea()) and "是" or "否",
-        (IsSubmerged() or IsSwimming()) and "是" or "否"))
+    Print(T("diag_header", total, #usable, #blocked))
+    Print(T("diag_env",
+        tostring(IsFlyableArea()) and T("yes") or T("no"),
+        (IsAdvancedFlyableArea and IsAdvancedFlyableArea()) and T("yes") or T("no"),
+        (IsSubmerged() or IsSwimming()) and T("yes") or T("no")))
 
     local function dump(tag, list)
         if #list == 0 then return end
         local cap   = 12
         local shown = {}
         for i = 1, math.min(#list, cap) do shown[i] = list[i] end
-        local tail  = (#list > cap) and string.format(" …等 %d 只", #list) or ""
-        Print(string.format("  [%s] %d 只: %s%s", tag, #list, table.concat(shown, ", "), tail))
+        local tail  = (#list > cap) and T("favs_more", #list) or ""
+        Print(T("favs_group", tag, #list, table.concat(shown, ", "), tail))
     end
-    dump("可用", usable)
-    dump("不可用", blocked)
+    dump(T("diag_usable"), usable)
+    dump(T("diag_blocked"), blocked)
 
     -- v1.2.6 自检①：召唤 API 可用性（random 模式应走 SummonByID(0)）
-    Print(string.format("召唤API：SummonByID=%s（0=随机收藏） SummonRandomFavoriteMount=%s",
-        C_MountJournal.SummonByID and "可用" or "缺失",
-        C_MountJournal.SummonRandomFavoriteMount and "可用" or "缺失"))
+    Print(T("diag_api",
+        C_MountJournal.SummonByID and T("api_ok") or T("api_missing"),
+        C_MountJournal.SummonRandomFavoriteMount and T("api_ok") or T("api_missing")))
 
     -- v1.2.6 自检②：权重最高候选池
     -- （v1.1.0~v1.2.5 的 random 因 API 名写错，实际召的就是这个池子里的坐骑）
@@ -532,36 +553,35 @@ local function DiagFavorites()
         local names = {}
         for i = 1, math.min(#pool, 10) do
             local n = C_MountJournal.GetMountInfoByID(pool[i])
-            names[i] = string.format("%s(ID:%d)", n or "?", pool[i])
+            names[i] = string.format("%s(ID:%d)", n or T("mount_fallback", pool[i]), pool[i])
         end
-        local tail = (#pool > 10) and string.format(" …等 %d 只", #pool) or ""
-        Print(string.format("权重最高候选池 %d 只（旧版 random 实际只召这里面的）: %s%s",
-            #pool, table.concat(names, ", "), tail))
+        local tail = (#pool > 10) and T("favs_more", #pool) or ""
+        Print(T("diag_pool", #pool, table.concat(names, ", "), tail))
     end
 
     if #usable == 0 then
-        Print("当前区域没有任何可用的星标收藏坐骑 → random 模式会无坐骑可召。")
+        Print(T("diag_no_usable"))
     elseif #usable <= 2 then
-        Print("可用池只有 " .. #usable .. " 只 → 这就是「只召这几只」的原因。")
+        Print(T("diag_few_usable", #usable))
     end
 end
 
 --====================== 状态 / 命令 ======================--
 
 local function FmtPref(v)
-    if v == nil then return "自动" end
-    if v == "none" then return "不骑" end
-    return "ID:" .. tostring(v)
+    if v == nil then return T("pref_auto") end
+    if v == "none" then return T("pref_none") end
+    return T("pref_id", v)
 end
 
 local function StatusText()
     local p = db.preferred or {}
-    return string.format("开关=%s  施法后延迟=%.1fs  模式=%s  地面=%s 飞行=%s 水下=%s",
-        db.enabled and "开" or "关",
+    return T("status_line",
+        db.enabled and T("on") or T("off"),
         db.delayAfterSpell or 1.0,
         db.mode or "random",
-        FmtPref(p.ground), FmtPref(p.flying), FmtPref(p.aquatic))
-        .. "  环境=" .. EnvText()
+        FmtPref(p.ground), FmtPref(p.flying), FmtPref(p.aquatic),
+        EnvText())
 end
 
 -- 恢复默认：必须【原地】改写 db 表，不能 db = DeepCopy(...) 换引用 ——
@@ -586,44 +606,44 @@ local function HandleSlash(msg)
     if cmd == "" or cmd == "toggle" then
         ToggleEnabled()
     elseif cmd == "on" then
-        db.enabled = true;  UpdateEnabled(); Print("已开启")
+        db.enabled = true;  UpdateEnabled(); Print(T("msg_enabled"))
     elseif cmd == "off" then
-        db.enabled = false; UpdateEnabled(); Print("已关闭")
+        db.enabled = false; UpdateEnabled(); Print(T("msg_disabled"))
     elseif cmd == "delay" then
         local n = tonumber(rest)
         if n and n >= 0 and n <= 10 then
             db.delayAfterSpell = n
-            Print(string.format("施法后延迟 = %.1fs", n))
+            Print(T("msg_delay", n))
         else
-            Print("用法: /am delay <0-10>")
+            Print(T("usage_delay"))
         end
     elseif cmd == "mode" then
         local m = (rest or ""):lower()
         if m == "fastest" or m == "random" then
-            db.mode = m; Print("模式 = " .. m)
+            db.mode = m; Print(T("msg_mode", m))
         else
-            Print("用法: /am mode fastest|random")
+            Print(T("usage_mode"))
         end
     elseif cmd == "pref" then
         local slot, val = rest:match("^(%S+)%s*(.*)$")
         slot = (slot or ""):lower()
         if slot == "ground" or slot == "flying" or slot == "aquatic" then
             if val == "" or val == "auto" then
-                db.preferred[slot] = nil; Print(slot .. " = 自动")
+                db.preferred[slot] = nil; Print(T("msg_pref_set", T("slot_" .. slot), T("pref_auto")))
             elseif val == "none" then
-                db.preferred[slot] = "none"; Print(slot .. " = 不骑")
+                db.preferred[slot] = "none"; Print(T("msg_pref_set", T("slot_" .. slot), T("pref_none")))
             else
                 local id = tonumber(val)
-                if id then db.preferred[slot] = id; Print(slot .. " = ID:" .. id)
-                else Print("用法: /am pref <ground|flying|aquatic> auto|none|坐骑ID") end
+                if id then db.preferred[slot] = id; Print(T("msg_pref_set", T("slot_" .. slot), T("pref_id", id)))
+                else Print(T("usage_pref")) end
             end
             -- v1.2.4：random 模式下 pref 完全无效（走暴雪随机收藏），
             -- 设置时明确提示，避免"设了没反应"的困惑
             if db.mode == "random" then
-                Print("注意：偏好设置只在 fastest 模式生效；当前是 random 模式，输入 /am mode fastest 切换")
+                Print(T("note_pref_mode"))
             end
         else
-            Print("用法: /am pref <ground|flying|aquatic> auto|none|坐骑ID")
+            Print(T("usage_pref"))
         end
     elseif cmd == "status" then
         Print(StatusText())
@@ -634,19 +654,36 @@ local function HandleSlash(msg)
     elseif cmd == "reset" then
         ApplyDefaults()
         UpdateEnabled()
-        Print("已恢复默认 · " .. StatusText())
+        Print(T("msg_reset", StatusText()))
+    elseif cmd == "lang" then
+        local l = (rest or ""):lower()
+        if l == "auto" or l == "zhcn" or l == "enus" then
+            local code = (l == "zhcn") and "zhCN" or ((l == "enus") and "enUS" or "auto")
+            db.lang = code
+            local effective = ApplyLang()
+            if code == "auto" then
+                Print(T("msg_lang", T("lang_name_auto") .. " (" .. effective .. ")"))
+            else
+                Print(T("msg_lang_reload", LangName(code)))
+            end
+        elseif l == "" then
+            Print(T("msg_lang", LangName(db.lang) .. " (" .. (AutoMountLiteLocale.GetLang() or "?") .. ")"))
+        else
+            Print(T("usage_lang"))
+        end
     else
-        Print("命令：")
-        Print("  /am                      切换 开/关")
-        Print("  /am on | /am off          开启 / 关闭")
-        Print("  /am status               查看状态")
-        Print("  /am favs                 按类型列出收藏坐骑（名称+ID，诊断随机池）")
-        Print("  /am diag                 诊断星标收藏在当前区域的可用性（解释只召某几只）")
-        Print("  /am delay <0-10>         施法后延迟秒数")
-        Print("  /am mode fastest|random  最快坐骑 / 随机召唤偏好坐骑")
-        Print("  /am pref <ground|flying|aquatic> auto|none|坐骑ID")
-        Print("  /am reset                恢复默认")
-        Print("  快捷键：ALT+Z 直接 开/关（可在「按键设置 → 插件」里修改）")
+        Print(T("help_title"))
+        Print(T("help_toggle"))
+        Print(T("help_onoff"))
+        Print(T("help_status"))
+        Print(T("help_favs"))
+        Print(T("help_diag"))
+        Print(T("help_delay"))
+        Print(T("help_mode"))
+        Print(T("help_pref"))
+        Print(T("help_reset"))
+        Print(T("help_lang"))
+        Print(T("help_binding"))
     end
 end
 
@@ -681,7 +718,7 @@ local function BuildSettingsPanel()
         local canHead  = Settings.CreateElementInitializer
         local canBtn   = _G.CreateSettingsButtonInitializer
 
-        local category, layout = Settings.RegisterVerticalLayoutCategory("AutoMountLite")
+        local category, layout = Settings.RegisterVerticalLayoutCategory(T("panel_title"))
 
         local function AddHeader(text)
             if canHead then
@@ -691,58 +728,79 @@ local function BuildSettingsPanel()
         end
 
         ----------------------------------------------------------------
-        AddHeader("自动上坐骑")
+        AddHeader(T("panel_title"))
+
+        -- 界面语言（放最上面：先选语言，下面每个控件的文字都跟着变）
+        if canProxy and canDrop then
+            local s = Settings.RegisterProxySetting(category, "AutoMountLite_lang",
+                VarType.String, T("dd_lang"), "auto",
+                function() return db.lang or "auto" end,
+                function(val)
+                    db.lang = val
+                    -- 立刻切语言：聊天输出、下拉选项、提示文字即时生效；
+                    -- 已建好的面板标题文字是静态的，需 /reload 后刷新（已在下拉说明里告知）
+                    local effective = ApplyLang()
+                    if val ~= "auto" then
+                        Print(T("msg_lang_reload", LangName(val)))
+                    else
+                        Print(T("msg_lang", T("lang_name_auto") .. " (" .. effective .. ")"))
+                    end
+                end)
+            local function GetOptions()
+                local c = Settings.CreateControlTextContainer()
+                c:Add("auto",  T("dd_lang_auto"))
+                c:Add("zhCN",  T("dd_lang_zhCN"))
+                c:Add("enUS",  T("dd_lang_enUS"))
+                return c:GetData()
+            end
+            Settings.CreateDropdown(category, s, GetOptions, T("dd_lang_tip"))
+        end
 
         -- 总开关
         if canCheck then
             local s = Settings.RegisterAddOnSetting(category, "AutoMountLite_enabled",
-                "enabled", db, VarType.Boolean, "启用自动上坐骑", DEFAULTS.enabled)
+                "enabled", db, VarType.Boolean, T("cb_enabled"), DEFAULTS.enabled)
             if s.SetValueChangedCallback then
                 s:SetValueChangedCallback(function() UpdateEnabled() end)
             end
-            Settings.CreateCheckbox(category, s,
-                "开启后：你落地静止时自动召唤坐骑。（快捷键 ALT+Z 或 /am 也可快速开关）")
+            Settings.CreateCheckbox(category, s, T("cb_enabled_tip"))
         end
 
         -- 召唤模式
         if canCheck and canDrop then
             local s = Settings.RegisterAddOnSetting(category, "AutoMountLite_mode",
-                "mode", db, VarType.String, "召唤模式", DEFAULTS.mode)
+                "mode", db, VarType.String, T("dd_mode"), DEFAULTS.mode)
             local function GetOptions()
                 local c = Settings.CreateControlTextContainer()
-                c:Add("random",  "随机召唤偏好坐骑（从星标收藏里随机 · 推荐）")
-                c:Add("fastest", "环境内最快坐骑（按权重表挑选）")
+                c:Add("random",  T("dd_mode_random"))
+                c:Add("fastest", T("dd_mode_fastest"))
                 return c:GetData()
             end
-            Settings.CreateDropdown(category, s, GetOptions,
-                "random：与坐骑图鉴的「随机召唤偏好坐骑」按钮行为完全一致，只从你的星标收藏里随机。\n"
-                .. "fastest：按当前环境（御空 / 可飞 / 地面 / 水下）权重表挑最快坐骑，"
-                .. "可用下方「指定坐骑偏好」精确控制。")
+            Settings.CreateDropdown(category, s, GetOptions, T("dd_mode_tip"))
         end
 
         -- 施法后延迟
         if canCheck and canSlider then
             local s = Settings.RegisterAddOnSetting(category, "AutoMountLite_delayAfterSpell",
-                "delayAfterSpell", db, VarType.Number, "施法后延迟", DEFAULTS.delayAfterSpell)
+                "delayAfterSpell", db, VarType.Number, T("slider_delay"), DEFAULTS.delayAfterSpell)
             local opts = Settings.CreateSliderOptions(0, 10, 0.5)
             local Lbl = _G.MinimalSliderWithSteppersMixin and MinimalSliderWithSteppersMixin.Label
             if Lbl and opts.SetLabelFormatter then
                 opts:SetLabelFormatter(Lbl.Right, function(v)
-                    return string.format("%.1f 秒", v)
+                    return T("slider_fmt", v)
                 end)
             end
-            Settings.CreateSlider(category, s, opts,
-                "施放非坐骑法术后等待多久才自动召唤坐骑（避免打断施法）。")
+            Settings.CreateSlider(category, s, opts, T("slider_tip"))
         end
 
         ----------------------------------------------------------------
-        AddHeader("指定坐骑偏好（仅 fastest 模式生效）")
+        AddHeader(T("header_pref"))
 
         if canProxy and canDrop then
             local SLOTS = {
-                { key = "ground",  label = "地面环境" },
-                { key = "flying",  label = "飞行环境（含御空）" },
-                { key = "aquatic", label = "水下环境" },
+                { key = "ground",  label = T("slot_label_ground") },
+                { key = "flying",  label = T("slot_label_flying") },
+                { key = "aquatic", label = T("slot_label_aquatic") },
             }
             for _, slotInfo in ipairs(SLOTS) do
                 local k = slotInfo.key
@@ -769,8 +827,8 @@ local function BuildSettingsPanel()
 
                 local function GetOptions()
                     local c = Settings.CreateControlTextContainer()
-                    c:Add("auto", "自动（按权重表挑最快）")
-                    c:Add("none", "不骑坐骑（该环境不自动召唤）")
+                    c:Add("auto", T("opt_auto"))
+                    c:Add("none", T("opt_none"))
                     if C_MountJournal and C_MountJournal.GetMountIDs then
                         local mounts = {}
                         for _, id in pairs(C_MountJournal.GetMountIDs()) do
@@ -778,7 +836,7 @@ local function BuildSettingsPanel()
                                 C_MountJournal.GetMountInfoByID(id)
                             if isCollected then
                                 mounts[#mounts + 1] = {
-                                    id = id, name = name or ("坐骑" .. id), fav = isFavorite,
+                                    id = id, name = name or T("mount_fallback", id), fav = isFavorite,
                                 }
                             end
                         end
@@ -794,56 +852,55 @@ local function BuildSettingsPanel()
                     end
                     return c:GetData()
                 end
-                Settings.CreateDropdown(category, s, GetOptions,
-                    "指定该环境下优先召唤的坐骑：选「自动」按权重表挑最快；"
-                    .. "选具体坐骑则固定优先召它（须已收集）。")
+                Settings.CreateDropdown(category, s, GetOptions, T("dd_pref_tip"))
             end
         end
 
         ----------------------------------------------------------------
-        AddHeader("工具")
+        AddHeader(T("header_tools"))
 
         if canBtn then
             layout:AddInitializer(CreateSettingsButtonInitializer(
-                "输出诊断到聊天框", "查看收藏与状态",
+                T("btn_diag"), T("btn_diag_desc"),
                 function()
                     Print(StatusText())
                     ListFavorites()
                 end,
-                "把当前配置、收藏坐骑构成与「只召某几只」的诊断信息打印到聊天框。", true))
+                T("btn_diag_tip"), true))
 
             layout:AddInitializer(CreateSettingsButtonInitializer(
-                "打开按键设置", "设置 ALT+Z 等快捷键",
+                T("btn_keys"), T("btn_keys_desc"),
                 function()
                     if Settings.OpenToCategory and Settings.KEYBINDINGS_CATEGORY_ID then
                         Settings.OpenToCategory(Settings.KEYBINDINGS_CATEGORY_ID)
                     end
                 end,
-                "在「按键设置 → 插件」里查看或修改本插件的开关键（默认 ALT+Z）。", true))
+                T("btn_keys_tip"), true))
 
             layout:AddInitializer(CreateSettingsButtonInitializer(
-                "恢复默认设置", "重置全部选项",
+                T("btn_reset"), T("btn_reset_desc"),
                 function()
                     ApplyDefaults()
                     UpdateEnabled()
                     if SettingsPanel and SettingsPanel.Refresh then SettingsPanel:Refresh() end
-                    Print("已恢复默认 · " .. StatusText())
+                    Print(T("msg_reset", StatusText()))
                 end,
-                "把开关、延迟、模式与所有坐骑偏好恢复为出厂默认。", true))
+                T("btn_reset_tip"), true))
         end
 
         Settings.RegisterAddOnCategory(category)
     end)
 
     if not ok then
-        Print("设置面板创建失败（不影响使用，可用 /am 命令配置）：" .. tostring(err))
+        Print(T("panel_error", tostring(err)))
     end
 end
 
 --====================== 快捷键开关（默认 ALT+Z） ======================--
-
+-- 这两条全局变量客户端在 Bindings.xml 之后读取，用来显示键位描述。
+-- Locale 文件先于本文件加载，此时已按客户端语言初始化，直接取文案即可。
 BINDING_HEADER_AUTOMOUNTLITE      = "AutoMountLite"
-BINDING_NAME_AUTOMOUNTLITE_TOGGLE = "开/关 自动上坐骑"
+BINDING_NAME_AUTOMOUNTLITE_TOGGLE = T("binding_name")
 
 -- 具名绑定（在 Bindings.xml 中声明），使键位在「按键设置 → 插件」里可见、可改
 local BINDING_ID = "AUTOMOUNTLITE_TOGGLE"
@@ -872,20 +929,20 @@ local function EnsureDefaultBinding()
         -- 旧版绑到了原始命令串，迁移为具名绑定
         SetBinding("ALT-Z", BINDING_ID)
         SaveBindings(GetCurrentBindingSet())
-        Print("已将开关快捷键迁移为「插件」具名绑定：ALT+Z")
+        Print(T("binding_migrated"))
         return
     end
     if occupied and occupied ~= "" then
         if not db.bindingWarned then
             db.bindingWarned = true
-            Print("ALT+Z 已被占用，未自动绑定；可到「按键设置 → 插件」里手动设置开关快捷键")
+            Print(T("binding_occupied"))
         end
         return
     end
 
     SetBinding("ALT-Z", BINDING_ID)
     SaveBindings(GetCurrentBindingSet())
-    Print("已设置默认开关快捷键：ALT+Z（可在「按键设置 → 插件」里修改）")
+    Print(T("binding_set"))
 end
 
 --====================== 事件 ======================--
@@ -911,6 +968,7 @@ frame:SetScript("OnEvent", function(_, event, arg1)
             end
         end
         AutoMountLiteDB = db
+        ApplyLang()      -- 按用户设置的语言（默认 auto=跟随客户端）生效
         BuildSettingsPanel()
 
     elseif event == "PLAYER_LOGIN" then
@@ -918,7 +976,7 @@ frame:SetScript("OnEvent", function(_, event, arg1)
         RebuildMountSpells()
         EnsureDefaultBinding()
         UpdateEnabled()
-        Print("已加载 · " .. StatusText() .. "（Alt+Z 开/关 · /am 查看命令）")
+        Print(T("msg_loaded", StatusText()))
 
     elseif event == "NEW_MOUNT_ADDED" then
         RebuildMountSpells()
