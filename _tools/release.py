@@ -36,6 +36,7 @@ import shutil
 import subprocess
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -130,7 +131,9 @@ def http_json(url, token, method="GET", payload=None, timeout=90):
 
 
 def http_upload(url, token, file_path, name, ctype, timeout=300):
-    """二进制上传（GitHub assets / CurseForge upload-file 都用 multipart）。"""
+    """二进制上传（GitHub assets 用 ?name= 查询参数指定文件名）。"""
+    sep = "&" if "?" in url else "?"
+    url = "%s%sname=%s" % (url, sep, urllib.parse.quote(name))
     with open(file_path, "rb") as f:
         blob = f.read()
     boundary = "----wowaddons%s" % re.sub(r"\D", "", str(os.path.getsize(file_path)))
