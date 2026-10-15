@@ -13,7 +13,7 @@
 ④ License 页 ── MIT
 ⑤ 上传第一个 zip ── ★ 项目不上传文件就永远不会公开 ★
 ⑥ 等人工审核（几分钟～2 天）→ 通过即上线
-      └─ 拿 Project ID → 回填 .toc → 以后就能自动化发版
+      └─ 拿 Project ID（创建后就有）→ 回填 .toc → 以后就能自动化发版
 ```
 
 两个真正的卡点：
@@ -108,17 +108,30 @@ First public release.
 - 三种结果：通过（自动上线）/ **Changes Required**（要改）/ **Rejected**（拒，会告诉原因）。
 - 超过 48 小时没消息：项目页右下角红色三角形 → Report → "Requires moderator attention"。
 
-## 审核通过之后：拿 Project ID，回填 toc
+## 拿 Project ID（创建后即有，不用等审核）
 
-1. 打开项目页，右侧 **About Project** 框里的 **Project ID**（一串数字）。
-2. 填进 `.toc`：
-   ```
-   ## X-Curse-Project-ID: 123456
-   ```
-3. 重跑 `python _tools/package.py` + `_tools/deploy.py`，commit + 双路推送 + 打 tag。
-4. 之后就能上自动化（见 [publishing.md](publishing.md) 第五节）：去
-   `authors-old.curseforge.com/account/api-tokens` 生成 API Token，
-   配 `BigWigsMods/packager`，推 tag 即自动发 CF/Wago。
+ID 是建项目时就分配的，三个办法，从最快到最兜底：
+
+1. **作者后台（最快，建完项目就能拿）**：`authors.curseforge.com` → Projects 列表 →
+   点进 AutoMountLite → General / Overview 页显示 **Project ID**；
+   新面板是单页应用，打开项目后**浏览器地址栏里也带这串数字**（`#/projects/123456/...`），
+   抄下来即可。
+2. **项目公开页（过审后）**：打开项目页 → 右侧 **About Project** 框 →
+   **Project ID**（2026 年 7 月起旁边有 **Copy** 按钮，点一下直接复制）。
+3. **legacy 面板兜底**：后台顶部可切回 Legacy dashboard（`authors-old.curseforge.com`），
+   项目编辑地址形如 `/project/123456/edit/general`，中间那串数字就是。
+
+拿到后回填 `.toc`：
+
+```
+## X-Curse-Project-ID: 123456
+```
+
+然后重跑 `python _tools/package.py` + `_tools/deploy.py`，commit + 双路推送 + 打 tag。
+
+> 注意：**手动上传不需要 Project ID**——它只用于自动化发版（`BigWigsMods/packager`
+> 靠它认项目）和让客户端识别更新来源。所以拿不到也不影响你先手动发布，
+> 拿到后告诉我数字即可，我回填并重打发布包。
 
 ## 以后每次发新版（重复第六步）
 
