@@ -116,7 +116,7 @@ Functionality inspired by the auto-summon module of *Dugi Questing Essential*;
 this addon is an independent implementation and contains none of its code.
 Dugi is a third-party addon with no affiliation to this project.
 
-MIT licensed. Source: https://cnb.cool/wuhuarou-2026_799/wow-addons
+MIT licensed. Source: https://github.com/shadapang/wow-addons
 ````
 
 ### Description（中文版，用于 NGA / 国服社区发帖）
@@ -145,7 +145,7 @@ MIT licensed. Source: https://cnb.cool/wuhuarou-2026_799/wow-addons
 
 功能灵感来自 Dugi Questing Essential 的自动上坐骑模块，本插件为独立实现，
 不含其任何代码。MIT 开源。
-源码：https://cnb.cool/wuhuarou-2026_799/wow-addons
+源码：https://github.com/shadapang/wow-addons
 ````
 
 ### 其它字段
