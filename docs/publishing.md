@@ -10,7 +10,7 @@
 | **v1.4.0（双语界面）** | ✅ 代码完成、已部署、已打包 | — | 待 tag `v1.4.0` + 推两路；CNB Release 由网页/NPC 建（附件用 `dist/AutoMountLite-1.4.0.zip`） |
 | CNB → GitHub 镜像 | ✅ 已配（`.cnb.yml` → `github.com/shadapang/wow-addons`） | — | 自动发布（方案 A）的前置已就绪 |
 | **CurseForge 流程文档** | ✅ [curseforge-walkthrough.md](curseforge-walkthrough.md) 已写好 | — | 字段逐项对照 + zip 红线 + 退回清单；项目名 `AutoMountLite` 已查重可用 |
-| CurseForge 项目 | 🟡 文案全就绪，待肖哥操作 | 需注册作者账号 + 上传 Logo（我无法代办） | general 页字段见 walkthrough ②；Summary/Description/Changelog 见本文档 |
+| **CurseForge 项目** | ✅ **已创建** | — | Project ID **1746390**（已回填 toc + 重打发布包）；项目页 `curseforge.com/wow/addons/automountlite`；待上传 v1.4.0 文件 + 等审核 |
 | Wago.io | ❌ 未开始 | 需账号 | 同一份 zip，描述复用英文版 |
 | NGA 发帖 | 📝 文案已写好 | 需账号发帖 | 见 [nga-post.md](nga-post.md)，可直接粘贴 |
 | `.toc` 的 Project ID | ❌ 待回填 | 需先有 CF/Wago 项目 | 项目过审后，项目页右侧 About Project 框里拿 ID，回填 `X-Curse-Project-ID` |

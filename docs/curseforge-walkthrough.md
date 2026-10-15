@@ -110,6 +110,10 @@ First public release.
 
 ## 拿 Project ID（创建后即有，不用等审核）
 
+> ✅ **已完成（2026-10-15）**：项目 `automountlite` 已创建，
+> **Project ID = 1746390**（作者后台地址栏 `#/projects/1746390/general` 拿到），
+> 已回填 `.toc`（`## X-Curse-Project-ID: 1746390`）并重打发布包、重指 tag v1.4.0（`cec0af1`）。
+
 ID 是建项目时就分配的，三个办法，从最快到最兜底：
 
 1. **作者后台（最快，建完项目就能拿）**：`authors.curseforge.com` → Projects 列表 →
