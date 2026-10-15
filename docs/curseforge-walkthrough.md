@@ -27,7 +27,7 @@
 | 字段 | 填什么 | 坑 |
 | --- | --- | --- |
 | **Project name** | `AutoMountLite` | 已查重，CF 上无同名（有的是 AutoMountFix / AutoMountGear / Auto Mount）。官方要求：名字里**别带类别、版本号或游戏名**——「AutoMountLite」本身合规。重名会被直接拒 |
-| **Logo** | 正方形 PNG，建议 256×256 以上 | 不许：纯色/渐变、游戏 logo、商标素材、NSFW。这是唯一需要"创作"的字段 |
+| **Logo** | ✅ 已生成：`dist/AutoMountLite-logo.png`（512×512，立马头 + 青铜徽章环 + 双侧闪电；生成图右下角带「AI生成」水印，已用 Pillow 裁掉，可直接上传） | 不许：纯色/渐变、游戏 logo、商标素材、NSFW |
 | **Summary** | 见下方，一句话 | **必须英文**；这是列表页预览，写清楚"干什么+怎么用" |
 | **Class** | `Addons` | WoW 插件固定选这个 |
 | **Main category** | `Companions` | WoW 没有独立 "Mounts" 分类；坐骑/宠物都归 Companions（同类插件 Auto Mount 即此类） |
