@@ -9,10 +9,11 @@
 | CNB Release v1.3.0 | ✅ 已发布 | — | ⚠️ 附件是**旧包**（3 文件、无 LICENSE、toc 含旧措辞），需在 Release 页重新上传 `dist/AutoMountLite-1.3.0.zip` |
 | **v1.4.0（双语界面）** | ✅ 代码完成、已部署、已打包 | — | 待 tag `v1.4.0` + 推两路；CNB Release 由网页/NPC 建（附件用 `dist/AutoMountLite-1.4.0.zip`） |
 | CNB → GitHub 镜像 | ✅ 已配（`.cnb.yml` → `github.com/shadapang/wow-addons`） | — | 自动发布（方案 A）的前置已就绪 |
-| CurseForge | ❌ 未开始 | 需注册作者账号（我无法代办） | 用下方表单 + `dist/AutoMountLite-1.4.0.zip` 上传 |
+| **CurseForge 流程文档** | ✅ [curseforge-walkthrough.md](curseforge-walkthrough.md) 已写好 | — | 字段逐项对照 + zip 红线 + 退回清单；项目名 `AutoMountLite` 已查重可用 |
+| CurseForge 项目 | 🟡 文案全就绪，待肖哥操作 | 需注册作者账号 + 上传 Logo（我无法代办） | general 页字段见 walkthrough ②；Summary/Description/Changelog 见本文档 |
 | Wago.io | ❌ 未开始 | 需账号 | 同一份 zip，描述复用英文版 |
 | NGA 发帖 | 📝 文案已写好 | 需账号发帖 | 见 [nga-post.md](nga-post.md)，可直接粘贴 |
-| `.toc` 的 Project ID | ❌ 待回填 | 需先有 CF/Wago 项目 | 拿到 ID 后填 `X-Curse-Project-ID` / `X-Wago-ID` |
+| `.toc` 的 Project ID | ❌ 待回填 | 需先有 CF/Wago 项目 | 项目过审后，项目页右侧 About Project 框里拿 ID，回填 `X-Curse-Project-ID` |
 
 > ⚠️ **已知限制（实测）**：`cnb` CLI 有 `releases`（13 tools）和 `assets`（4 tools）模块，
 > 但**都不能上传 Release 附件**——`post-release` 无文件参数，`assets` 只有 delete/list。
@@ -22,7 +23,14 @@
 > 发一处即覆盖全球 + 国服。NGA 属于「发帖引流」不是托管渠道，发布后去发个介绍贴带链接即可。
 > WoWInterface 老牌但流量小，可略。
 
-## 一、发布前的硬性检查（每次发版都要走）
+## 一、发布渠道与全流程
+
+**渠道结论：CurseForge 为主（发一处=全球+国服），Wago 顺手加，NGA 发帖引流。**
+完整建项目/上传/审核/回填 ID 的逐步流程见
+**[curseforge-walkthrough.md](curseforge-walkthrough.md)**（含字段逐项对照、zip 结构红线、
+退回原因清单）。本文件只放「可直接粘贴」的文案。
+
+## 二、发布前的硬性检查（每次发版都要走）
 
 ```bash
 # 1. 离线仿真必须全绿（改了逻辑就要有对应新测试）
@@ -38,7 +46,7 @@ python _tools/deploy.py
 **版本号必须先在 `.toc` 里改**（`## Version: x.y.z`），`package.py` 和文件名都从它读，
 不要另外维护一份。
 
-## 二、CurseForge 表单（可直接粘贴）
+## 三、CurseForge 表单（可直接粘贴）
 
 ### 项目名
 ```
@@ -144,9 +152,12 @@ MIT licensed. Source: https://cnb.cool/wuhuarou-2026_799/wow-addons
 
 | 字段 | 值 |
 | --- | --- |
-| Category | Mounts & Companions |
+| Class | Addons |
+| Main category | **Companions**（WoW 无独立 Mounts 分类，坐骑/宠物均归此类；同类插件 Auto Mount 即此类） |
+| Additional categories | Miscellaneous（可选，别乱加） |
 | License | MIT |
 | Game Version | 12.1.0（`Interface: 120100`，与 `.toc` 一致） |
+| Release Type | Release（必须，否则进不了 CF 客户端） |
 | 附件 | `dist/AutoMountLite-<version>.zip` |
 | 截图 | 设置面板截图（选项 → 插件 → AutoMountLite） |
 
@@ -159,12 +170,12 @@ MIT licensed. Source: https://cnb.cool/wuhuarou-2026_799/wow-addons
 ## X-Wago-ID: abcdefgh
 ```
 
-## 三、Wago.io
+## 四、Wago.io
 
 建项目 → 上传同一个 zip → 描述可复用英文版。Wago 对作者有 HTTP API
 （一个 POST 就能发版），后续可自动化。
 
-## 四、发版流程（SOP）
+## 五、发版流程（SOP）
 
 ```
 改代码
@@ -178,7 +189,7 @@ MIT licensed. Source: https://cnb.cool/wuhuarou-2026_799/wow-addons
                                      └─ CNB 上基于该 tag 发 Release（附 zip）
 ```
 
-## 五、自动化发布（可选，等有用户再做）
+## 六、自动化发布（可选，等有用户再做）
 
 行业标准 `BigWigsMods/packager`（推 tag → 自动发 CF + WoWInterface + Wago +
 GitHub Releases）。它围绕 GitHub Actions 设计，本仓在 CNB，三条路：
@@ -189,7 +200,7 @@ GitHub Releases）。它围绕 GitHub Actions 设计，本仓在 CNB，三条路
 
 插件还没用户时先搭 CI 是纯投入，建议手动发几次再决定。
 
-## 六、合规红线
+## 七、合规红线
 
 1. **描述里不许写「复刻 / Dugi 版 / 官方分支」**——功能复刻不侵权，但措辞会被
    当成仿冒而招投诉。统一用「功能灵感来自 / 独立实现 / 不含其代码」。
