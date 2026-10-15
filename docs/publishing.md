@@ -190,16 +190,38 @@ MIT licensed. Source: https://github.com/shadapang/wow-addons
                                      └─ CNB 上基于该 tag 发 Release（附 zip）
 ```
 
-## 六、自动化发布（可选，等有用户再做）
+## 六、自动化发布（`_tools/release.py`，已就绪）
 
-行业标准 `BigWigsMods/packager`（推 tag → 自动发 CF + WoWInterface + Wago +
-GitHub Releases）。它围绕 GitHub Actions 设计，本仓在 CNB，三条路：
+**一条命令发版**（预检 → 测试不绿即中止 → 语法检查 → 打包 → git 双路推送 → GitHub Release）：
 
-- **A** 镜像到 GitHub + Actions（一次配置长期省事）
-- **B** 在 CNB 的 `.cnb.yml` 里跑（CI 装 perl 即可）
-- **C** 手动打包上传（5 分钟，零维护）← 现阶段推荐
+```bash
+python _tools/release.py                  # 按 toc 版本号发版
+python _tools/release.py --version 1.5.0  # 先改 toc 版本号再发
+python _tools/release.py --dry-run        # 只做 预检+测试+打包，不碰远端
+```
 
-插件还没用户时先搭 CI 是纯投入，建议手动发几次再决定。
+已打通的链路（2026-10-15 实测）：
+
+| 环节 | 状态 | 说明 |
+| --- | --- | --- |
+| 测试 / 语法 / 打包 / 部署 | ✅ 全自动 | 测试不绿直接中止，不发版 |
+| git 双路推送 + tag | ✅ 全自动 | origin=CNB、backup=本地裸仓；tag 已存在即沿用，**绝不自动重指** |
+| tag 同步到 GitHub | ✅ 已打通 | `.cnb.yml` 开启 `push_tags: true`，CNB 流水线自动同步 |
+| **GitHub Release + 附件** | ✅ **已打通** | 令牌读 `~/.git-credentials`（权限 gist/repo/workflow）；建/复用 Release、删旧附件重传。v1.4.0 已发布：<https://github.com/shadapang/wow-addons/releases/tag/v1.4.0> |
+| CurseForge 上传 | ⏳ 缺令牌 | 端点已探测存在（`wow.curseforge.com/api/projects/1746390/upload-file`，403=需鉴权）。拿到 API Token 后：`CF_API_TOKEN=xxx python _tools/release.py --cf` |
+| Wago 上传 | ⏳ 缺令牌 | 需 Wago API Token + Project ID |
+
+> **实测踩过的两个坑（都已修进脚本）**：① tag 已存在时若自动重指，会把发版后的工具/文档
+> 提交拖进发版 tag（backup 推送被拒、三处 tag 对象分叉）——现改为沿用并告警；
+> ② GitHub 附件上传必须带 `?name=` 查询参数，否则 400 Invalid name。
+
+### 之后每次发新版就三步
+
+```
+1. 改代码 + _tools/test_runtime.py 加/改测试
+2. python _tools/release.py --version X.Y.Z     # 自动跑完测试/打包/双路推/GitHub Release
+3.（可选）CF_API_TOKEN=xxx python _tools/release.py --cf   # 有令牌后一并传 CurseForge
+```
 
 ## 七、合规红线
 
