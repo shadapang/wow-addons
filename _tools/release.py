@@ -216,22 +216,28 @@ def step_git(version, zip_path):
         log("  已提交：%s" % msg)
     else:
         log("  无待提交改动")
-    # tag 已存在且指向 HEAD 就不重建（避免改了 tagger 时间导致 sha 漂移）
+    # tag 已存在则绝不自动重指：否则发版后的工具/文档提交会被拖进发版 tag
+    # （实测踩过：release.py 提交让 HEAD 前移，v1.4.0 被拖到工具提交上，backup 拒绝推送）
     tag_sha = run([GIT, "rev-parse", "%s^{}" % tag], check=False).stdout.strip()
-    if tag_sha == head:
-        log("  tag %s 已指向 HEAD，沿用" % tag)
+    if tag_sha:
+        if tag_sha != head:
+            log("  ⚠️ tag %s 指向 %s 而非 HEAD %s —— 沿用原 tag"
+                "（要重指请手工 git tag -f，别让工具提交混进发版 tag）"
+                % (tag, tag_sha[:7], head[:7]))
+        else:
+            log("  tag %s 已指向 HEAD，沿用" % tag)
     else:
-        run([GIT, "tag", "-f", "-a", tag, "-m", "%s %s" % (ADDON, version)])
+        run([GIT, "tag", "-a", tag, "-m", "%s %s" % (ADDON, version)])
         log("  tag %s -> %s" % (tag, run([GIT, "rev-parse", "--short", "HEAD"]).stdout.strip()))
     run([GIT, "push", "origin", "main"])
     run([GIT, "push", "backup", "main"])
-    # tag：远端没有才推（避免无谓 force）
-    remote_tags = run([GIT, "ls-remote", "origin", "refs/tags/%s" % tag], check=False).stdout.strip()
-    if remote_tags:
-        log("  远端已有 %s" % tag)
-    else:
-        run([GIT, "push", "origin", tag])
-    run([GIT, "push", "backup", tag])
+    # tag：只在远端缺失时推（两个远端都一样守卫，避免无谓 force 与 rejected）
+    for remote in ("origin", "backup"):
+        rt = run([GIT, "ls-remote", remote, "refs/tags/%s" % tag], check=False).stdout.strip()
+        if rt:
+            log("  %s 已有 %s" % (remote, tag))
+        else:
+            run([GIT, "push", remote, tag])
     fork = run([GIT, "rev-list", "--left-right", "--count", "backup/main...origin/main"]).stdout.strip()
     log("  两路分叉（backup/origin）：%s" % fork)
 
