@@ -5,7 +5,8 @@
 ## Version: 1.4.0
 ## X-Category: Mounts
 ## X-License: MIT
-## X-Website: https://cnb.cool/wuhuarou-2026_799/wow-addons
+## X-Website: https://github.com/shadapang/wow-addons
+## X-Curse-Project-ID: 1746390
 ## SavedVariables: AutoMountLiteDB
 AutoMountLite_Locale.lua
 AutoMountLite.lua
