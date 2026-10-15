@@ -155,7 +155,8 @@ MIT licensed. Source: https://github.com/shadapang/wow-addons
 | Class | Addons |
 | Main category | **Companions**（WoW 无独立 Mounts 分类，坐骑/宠物均归此类；同类插件 Auto Mount 即此类） |
 | Additional categories | Miscellaneous（可选，别乱加） |
-| License | MIT |
+| License | MIT（下拉搜 `MIT`；别选 All Rights Reserved） |
+| Project distribution | **打开（允许第三方分发）**。关掉后黑盒工坊/网易有爱/WoWUp/Ajour 等第三方客户端全部无法通过 API 拉取，国服玩家装不到；代价仅是第三方下载不计奖励积分。项目页 License tab 随时可改 |
 | Game Version | 12.1.0（`Interface: 120100`，与 `.toc` 一致） |
 | Release Type | Release（必须，否则进不了 CF 客户端） |
 | 附件 | `dist/AutoMountLite-<version>.zip` |
