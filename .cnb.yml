@@ -14,4 +14,4 @@ main:
             password: ${token}
             branch: main        # 只同步 main
             force: false        # 非快进即失败，GitHub 侧分叉时流水线报红=告警
-            push_tags: false    # 标签暂不同步
+            push_tags: true     # 标签同步：推 tag 后经本流水线落到 GitHub，供 Release/Actions 用
