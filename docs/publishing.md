@@ -58,7 +58,7 @@ AutoMountLite
 Automatically summons your mount when you start moving — lightweight, zero dependencies, bilingual (English / 简体中文), with a built-in options panel.
 ```
 
-### Description（英文正文，CurseForge 主站用）
+### Description（英文完整版，CurseForge 主站 / Wago 用）
 
 ````markdown
 ## AutoMountLite — Auto-Summon Your Mount
@@ -119,33 +119,56 @@ Dugi is a third-party addon with no affiliation to this project.
 MIT licensed. Source: https://github.com/shadapang/wow-addons
 ````
 
-### Description（中文版，用于 NGA / 国服社区发帖）
+### Description（中文完整版，NGA / 国服社区发帖用；与英文版逐节对应）
 
 ````markdown
 ## AutoMountLite —— 自动上坐骑
 
-零依赖小插件：你一动、且没在干别的事，就自动上坐骑。
-配置在「选项 → 插件 → AutoMountLite」里鼠标点，不用记命令。
+零依赖小插件：当你开始移动、且没在做别的事时，自动召唤坐骑。
+配置全部在「选项 → 插件 → AutoMountLite」里鼠标点完成，不需要记任何命令。
 
-**功能**
-- 0.5 秒心跳 + 一票否决守卫：战斗中 / 施法中 / 已骑乘 / 室内 / 死亡 / 载具 /
-  坠落 / 拾取窗 / 刚下坐骑 等任一命中就不召唤。
-- **中英双语界面**：默认跟随客户端语言，也可在「选项 → 插件 → AutoMountLite → 界面语言」
-  里手动切换（或 `/am lang zhCN|enUS`）。聊天输出、面板文字、下拉选项、键位描述全部本地化。
-- 两种模式：
-  - *随机偏好*（默认）：调用 `C_MountJournal.SummonByID(0)`，和你在坐骑图鉴里
-    点「随机召唤偏好坐骑」是同一个调用，**只会召唤你标了星星的坐骑**。
-  - *环境内最快*：按当前环境（地面 / 飞行 / 御空 / 水下）的速度权重挑最快的一批随机取。
-- 可按环境指定坐骑（地面 / 飞行 / 水下分别设置），也可设成「不骑」。
-- 施法后延迟可调（0–10 秒，默认 1.0 秒）。
-- 自带图形设置面板 + `/am diag` 诊断命令。
-- ALT+Z 开关（可在「按键设置 → 插件」改）。
+### 功能
 
-**只调用暴雪官方 API**，不模拟按键、不注入、不 hook、不联网。
+- **移动即召唤。** 0.5 秒心跳检测一票否决条件（战斗中、施法中、已骑乘、室内、
+  死亡、载具中、坠落中、拾取中、刚下坐骑等），只在真正空闲时才会召唤。
+- **两种召唤模式。**
+  - *随机偏好坐骑*（默认）：调用 `C_MountJournal.SummonByID(0)`——与你在坐骑图鉴里
+    点「随机召唤偏好坐骑」按钮是完全相同的调用，**只会召唤你标记为收藏的坐骑**。
+  - *区域内最快*：按当前环境（地面 / 飞行 / 御空 / 水下）的速度权重表挑选最快坐骑。
+- **按环境指定坐骑。** 可分别为地面、飞行、水下强制指定某只坐骑（或「不骑」）。
+- **施法后延迟可调**（0–10 秒，默认 1.0 秒）。
+- **中英双语界面。** 简体中文与 English——默认跟随客户端语言，也可在选项面板
+  （或 `/am lang`）中强制切换。聊天输出、面板文字、下拉选项、键位描述全部本地化。
+- **内置选项面板**（暴雪 `Settings` API）+ 诊断命令。
+- **ALT+Z** 开关插件（可在「按键设置 → 插件」中改键）。
 
-功能灵感来自 Dugi Questing Essential 的自动上坐骑模块，本插件为独立实现，
-不含其任何代码。MIT 开源。
-源码：https://github.com/shadapang/wow-addons
+### 命令
+
+| 命令 | 作用 |
+| --- | --- |
+| `/am` | 开 / 关切换 |
+| `/am status` | 当前状态、配置与检测到的环境 |
+| `/am favs` | 按类型列出收藏坐骑（含 ID） |
+| `/am diag` | 诊断：区域可用性、召唤 API 自检、权重最高候选池 |
+| `/am mode random\|fastest` | 切换召唤模式 |
+| `/am delay <0-10>` | 施法后延迟 |
+| `/am lang auto\|zhCN\|enUS` | 界面语言：跟随客户端 / 中文 / 英文 |
+| `/am pref <ground\|flying\|aquatic> auto\|none\|<坐骑ID>` | 按环境指定坐骑 |
+| `/am reset` | 恢复默认 |
+
+### 说明
+
+- 只使用暴雪官方 API（`C_Timer`、`C_MountJournal`），不模拟按键、不 hook、不注入、不联网。
+- 如果你没有标记任何收藏坐骑，*随机偏好坐骑*模式将无从选择——请在坐骑图鉴里点星星，
+  或切换到 `/am mode fastest`。
+- 坐骑类型映射表按当前坐骑类型 ID 维护（402/424 = 御空，248 = 飞行，…）。详见源码仓库。
+
+### 致谢
+
+功能灵感来自 *Dugi Questing Essential* 的自动召唤坐骑模块；本插件为独立实现，
+不含其任何代码。Dugi 是第三方插件，与本插件无隶属关系。
+
+MIT 许可。源码：https://github.com/shadapang/wow-addons
 ````
 
 ### 其它字段
