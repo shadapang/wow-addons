@@ -4,22 +4,26 @@
 
 链路：预检 -> 仿真测试 -> Lua 语法检查 -> 打包 -> git 提交/tag/双路推送
       -> GitHub Release（建 Release + 传 zip 附件）
-      -> [可选] CurseForge 上传（需 CF_API_TOKEN）
+      -> [可选] CurseForge 上传（需 CF 账号邮箱 + API 令牌）
 
 用法：
     python _tools/release.py                    # 按 toc 里的版本号发版
     python _tools/release.py --version 1.5.0    # 先把 toc 版本号改成 1.5.0 再发
     python _tools/release.py --dry-run          # 只做 预检+测试+打包，不碰任何远端
-    CF_API_TOKEN=xxx python _tools/release.py --cf          # 附带上传 CurseForge
-    CF_API_TOKEN=xxx python _tools/release.py --cf --cf-game-version 12.1.0
+    python _tools/release.py --cf                      # 附带上传 CurseForge
+    python _tools/release.py --cf --cf-game-version 12.1.0
 
 GitHub 令牌来源（按优先级）：
     1. 环境变量 GITHUB_TOKEN
     2. ~/.git-credentials 里 github.com 的 password 字段（本机已配置，权限 gist/repo/workflow）
 
-CurseForge 令牌来源：环境变量 CF_API_TOKEN
-   （在 authors-old.curseforge.com/account/api-tokens 生成，权限需含 projects:write）
-    ⚠️ 该分支在拿到令牌前未经真机实测，首次使用请用 --dry-run 之外的步骤逐步核对。
+CurseForge 凭据来源（按优先级）：
+    1. 环境变量 CF_ACCOUNT_EMAIL + CF_API_TOKEN
+    2. _tools/cf_credentials.txt（key=value 格式，已 gitignore）
+   认证方式：HTTP Basic（用户名=CF 账号邮箱，密码=API 令牌）
+   令牌在 authors-old.curseforge.com/account/api-tokens 生成，权限需含 projects:write
+   ⚠️ CF API 前面有 Cloudflare：请求必须带浏览器 UA + Referer，
+      裸 urllib 默认 UA 会被 403 人机验证页拦（已封装进 cf_get/cf_auth_header）
 
 设计约束（与本仓 SOP 一致）：
     - 版本号唯一来源是 .toc 的 ## Version，不在别处维护
@@ -29,6 +33,7 @@ CurseForge 令牌来源：环境变量 CF_API_TOKEN
 """
 
 import argparse
+import base64
 import json
 import os
 import re
@@ -113,6 +118,57 @@ def github_token():
                     if m:
                         return m.group(1)
     die("拿不到 GitHub 令牌（设 GITHUB_TOKEN 或在 ~/.git-credentials 配 github.com）")
+
+
+CF_CRED_FILE = os.path.join(HERE, "cf_credentials.txt")
+# Cloudflare 只放行带浏览器 UA + Referer 的请求，否则返回人机验证页（HTTP 403 HTML）
+CF_BROWSER_HEADERS = {
+    "Accept": "application/json",
+    "Accept-Language": "en-US,en;q=0.9",
+    "User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                   "(KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"),
+    "Referer": "https://authors-old.curseforge.com/",
+}
+
+
+def cf_credentials():
+    """CF 认证 = 账号邮箱 + API 令牌。优先环境变量，其次 _tools/cf_credentials.txt。"""
+    email = os.environ.get("CF_ACCOUNT_EMAIL")
+    token = os.environ.get("CF_API_TOKEN")
+    if not (email and token) and os.path.exists(CF_CRED_FILE):
+        kv = {}
+        with open(CF_CRED_FILE, encoding="utf-8", errors="ignore") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                k, v = line.split("=", 1)
+                kv[k.strip()] = v.strip()
+        email = email or kv.get("email")
+        token = token or kv.get("token")
+    if not (email and token):
+        die("缺 CurseForge 凭据：设环境变量 CF_ACCOUNT_EMAIL + CF_API_TOKEN，"
+            "或在 _tools/cf_credentials.txt 填 email=/token= 两行"
+            "（令牌生成：authors-old.curseforge.com/account/api-tokens，权限 projects:write）")
+    return email, token
+
+
+def cf_auth_header(email, token):
+    raw = ("%s:%s" % (email, token)).encode("utf-8")
+    return "Basic " + base64.b64encode(raw).decode("ascii")
+
+
+def cf_get(url, email, token, timeout=90):
+    """CF API GET（Basic 认证 + 浏览器 UA，缺一不可）。"""
+    headers = dict(CF_BROWSER_HEADERS)
+    headers["Authorization"] = cf_auth_header(email, token)
+    req = urllib.request.Request(url, headers=headers, method="GET")
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            body = r.read()
+            return r.status, (json.loads(body.decode("utf-8")) if body else {})
+    except urllib.error.HTTPError as e:
+        return e.code, json.loads(e.read().decode("utf-8", "ignore") or "{}")
 
 
 def http_json(url, token, method="GET", payload=None, timeout=90):
@@ -302,11 +358,9 @@ def step_github(version, zip_path):
 
 def step_curseforge(version, zip_path, game_version):
     log("\n[附] CurseForge 上传")
-    tok = os.environ.get("CF_API_TOKEN")
-    if not tok:
-        die("未设 CF_API_TOKEN，跳过 CF 上传（去 authors-old.curseforge.com/account/api-tokens 生成）")
+    email, tok = cf_credentials()
     # 解析 gameVersionTypeId（WoW 的版本 ID 与 Interface 号不同，必须查 API）
-    code, versions = http_json(CF_VERSIONS_URL, tok)
+    code, versions = cf_get(CF_VERSIONS_URL, email, tok)
     if code != 200:
         die("查 CF 版本列表失败（%d）：%s" % (code, versions))
     want = []
@@ -323,14 +377,15 @@ def step_curseforge(version, zip_path, game_version):
         "gameVersions": want,
         "releaseType": "release",
     }
-    code, resp = http_upload_multipart_cf(CF_UPLOAD_URL, tok, zip_path, fields)
+    code, resp = http_upload_multipart_cf(CF_UPLOAD_URL, email, tok, zip_path, fields)
     if code not in (200, 201, 202):
         die("CF 上传失败（%d）：%s" % (code, resp))
     log("  CF 上传成功：%s" % resp)
 
 
-def http_upload_multipart_cf(url, token, file_path, fields):
-    """CurseForge upload-file：metadata(JSON) + file 两个 multipart 字段。"""
+def http_upload_multipart_cf(url, email, token, file_path, fields):
+    """CurseForge upload-file：metadata(JSON) + file 两个 multipart 字段。
+    认证 = HTTP Basic（邮箱:令牌）；浏览器 UA/Referer 必须带，否则 Cloudflare 拦。"""
     with open(file_path, "rb") as f:
         blob = f.read()
     boundary = "----cf%s" % re.sub(r"\D", "", str(len(blob)))
@@ -342,11 +397,11 @@ def http_upload_multipart_cf(url, token, file_path, fields):
              blob,
              ("\r\n--%s--\r\n" % boundary).encode("utf-8")]
     body = b"".join(parts)
-    req = urllib.request.Request(url, data=body, method="POST", headers={
-        "Authorization": "Bearer %s" % token,
-        "Content-Type": "multipart/form-data; boundary=%s" % boundary,
-        "Content-Length": str(len(body)),
-    })
+    headers = dict(CF_BROWSER_HEADERS)
+    headers["Authorization"] = cf_auth_header(email, token)
+    headers["Content-Type"] = "multipart/form-data; boundary=%s" % boundary
+    headers["Content-Length"] = str(len(body))
+    req = urllib.request.Request(url, data=body, method="POST", headers=headers)
     try:
         with urllib.request.urlopen(req, timeout=300) as r:
             return r.status, r.read().decode("utf-8", "ignore")[:300]
@@ -365,7 +420,7 @@ def main():
     ap.add_argument("--version", help="先把 toc 版本号改成这个再发版")
     ap.add_argument("--dry-run", action="store_true", help="只做 预检+测试+打包，不碰远端")
     ap.add_argument("--skip-tests", action="store_true", help="跳过测试（不推荐）")
-    ap.add_argument("--cf", action="store_true", help="附带上传 CurseForge（需 CF_API_TOKEN）")
+    ap.add_argument("--cf", action="store_true", help="附带上传 CurseForge（凭据见 _tools/cf_credentials.txt）")
     ap.add_argument("--cf-game-version", default="12.1.0", help="CF 上的游戏版本名，默认 12.1.0")
     args = ap.parse_args()
 
@@ -391,7 +446,7 @@ def main():
     if args.cf:
         step_curseforge(VERSION, zip_path, args.cf_game_version)
     else:
-        log("\n（未加 --cf，跳过 CurseForge 上传；需要时：CF_API_TOKEN=xxx python _tools/release.py --cf）")
+        log("\n（未加 --cf，跳过 CurseForge 上传；需要时：python _tools/release.py --cf）")
     log("\n完成：v%s 已双路推送 + GitHub Release 发布" % VERSION)
 
 

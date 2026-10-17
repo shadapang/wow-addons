@@ -16,3 +16,9 @@ _tools/*.log
 .idea/
 .DS_Store
 Thumbs.db
+
+# 发布令牌（绝不入库）
+_tools/cf_credentials.txt
+_tools/.env
+_tools/.chrome-profile/
+_tools/__pycache__/
